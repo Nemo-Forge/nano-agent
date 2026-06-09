@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nano-agent"
+version = "0.1.0"
+description = "Offline-first autonomous LLM agent runtime for edge devices (Jetson, Raspberry Pi)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Nemo-Forge" }]
+keywords = ["llm", "agent", "edge", "jetson", "raspberry-pi", "llama.cpp", "gguf", "offline"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "llama-cpp-python>=0.2.90",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+nano-agent = "nano_agent.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Nemo-Forge/nano-agent"
+Repository = "https://github.com/Nemo-Forge/nano-agent"
+
+[tool.hatch.build.targets.wheel]
+packages = ["nano_agent"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_ignores = true
+ignore_missing_imports = true
