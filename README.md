@@ -13,7 +13,7 @@ Every major agent framework — LangChain, AutoGen, CrewAI, smolagents — assum
 
 `nano-agent` is the first agent runtime built ground-up for edge constraints:
 
-- **Sub-500 MB footprint** — model + runtime + tools fit in 4 GB RAM
+- **Tiny runtime overhead** — the agent layer adds ~20–40 MB on top of the model; a 1.5B Q4 model + runtime + tools fits comfortably in 4 GB RAM (see [footprint](#footprint))
 - **Fully offline** — no API keys, no cloud calls, no phone-home
 - **llama.cpp native** — GGUF models, all quantizations (Q4 to Q8), all llama.cpp backends
 - **Plugin tools via subprocess/WASM** — extend without recompiling
@@ -176,6 +176,24 @@ per loop iteration, and `run_end` — one JSON object per line:
 {"ts": 1749470003.02, "event": "run_end", "answer": "...", "steps": 1, "reason": "done"}
 ```
 
+## Footprint
+
+The model dominates memory; the agent runtime is small on top of it. Honest
+breakdown for a 1.5B Q4_K_M model on an 8 GB Jetson Orin Nano:
+
+| Component | Approx. RAM |
+|-----------|-------------|
+| Model weights (1.5B Q4_K_M) | ~900–1100 MB |
+| KV cache (n_ctx 4096) | ~150–300 MB |
+| llama.cpp runtime (C++) | ~50–100 MB |
+| **Python interpreter + nano-agent** | **~20–40 MB** |
+
+nano-agent's own overhead is the smallest line in the table — the loop builds a
+prompt, calls llama.cpp, parses JSON, and runs a tool. The heavy compute lives
+in llama.cpp (C++), so the orchestration language is not on the hot path. See
+[ANALYSIS.md](ANALYSIS.md) for the latency breakdown, and
+[docs/rust-core.md](docs/rust-core.md) for when a compiled core would help.
+
 ## Model Recommendations
 
 | Use Case | Model | Quant | Size |
@@ -190,11 +208,14 @@ per loop iteration, and `run_end` — one JSON object per line:
 | | nano-agent | smolagents | AutoGen | LangChain |
 |--|--|--|--|--|
 | Edge/offline first | Yes | Partial | No | No |
-| RAM footprint | <500 MB | ~1–2 GB | ~2–4 GB | ~3–6 GB |
+| Runtime overhead (excl. model) | ~20–40 MB | ~300 MB–2 GB¹ | ~300 MB+¹ | ~300 MB+¹ |
 | llama.cpp native | Yes | Via adapter | No | Via adapter |
 | No API key required | Yes | Yes | No | No |
 | WASM plugins | Yes | No | No | No |
 | Jetson tested | Yes | No | No | No |
+
+¹ Other frameworks pull heavy dependency trees (transformers/torch, etc.) on
+top of the model. nano-agent's only required dependency is `llama-cpp-python`.
 
 ## Roadmap
 
