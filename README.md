@@ -121,35 +121,59 @@ print(json.dumps({"ok": True, "result": result}))
 
 ## Built-in Tools
 
-| Tool | Description |
-|------|-------------|
-| `bash` | Execute shell commands (sandboxed) |
-| `read_file` | Read text files |
-| `write_file` | Write/append files |
-| `python` | Execute Python snippets |
-| `http_get` | HTTP requests (if network available) |
-| `memory` | Persistent key-value store across sessions |
+| Tool | Description | Status |
+|------|-------------|--------|
+| `bash` | Execute shell commands | available |
+| `read_file` | Read text files | available |
+| `write_file` | Write/append files | available |
+| `python` | Execute Python snippets in a subprocess | available |
+| `memory` | Persistent key-value store across sessions | available |
+| `http_get` | HTTP requests (offline-mode aware) | planned (v0.5) |
+
+Restrict which tools the agent may use with `--tools` or the `[tools] allowed`
+config key, e.g. `--tools bash,read_file`.
 
 ## Configuration
+
+nano-agent reads `~/.nano-agent/config.toml` by default, or any file passed with
+`--config`. CLI flags always override the config file. A full sample lives in
+[examples/config.toml](examples/config.toml).
 
 ```toml
 # ~/.nano-agent/config.toml
 
 [model]
-path = "~/models/qwen2.5-1.5b-q4_k_m.gguf"
+path = "~/models/qwen2.5-1.5b-instruct-q4_k_m.gguf"
 n_ctx = 4096
-n_gpu_layers = 99        # -1 = all layers on GPU
+n_gpu_layers = -1        # -1 = all layers on GPU, 0 = CPU only
 temperature = 0.1
 
 [agent]
 max_steps = 20
 max_tokens_per_step = 512
-step_timeout_sec = 60
-offline_only = true      # block http_tool if true
+offline_only = true      # reserved for network-capable tools (v0.5)
 
 [tools]
-allowed = ["bash", "read_file", "write_file", "python"]
-sandbox = true           # use bubblewrap/firejail if available
+allowed = ["bash", "read_file", "write_file", "python", "memory"]
+
+[memory]
+path = "~/.nano-agent/memory.json"
+
+[logging]
+file = "~/.nano-agent/trace.jsonl"   # JSONL trace of every run; omit to disable
+```
+
+### Run tracing
+
+Pass `--log-file run.jsonl` (or set `[logging] file`) to record a structured,
+machine-readable trace. Each run emits `run_start`, one `step` + `observation`
+per loop iteration, and `run_end` — one JSON object per line:
+
+```json
+{"ts": 1749470000.12, "event": "run_start", "task": "...", "model": "..."}
+{"ts": 1749470001.44, "event": "step", "action": "tool", "tool": "bash", "args": {"cmd": "ls"}}
+{"ts": 1749470001.51, "event": "observation", "ok": true, "error": null, "result_len": 84}
+{"ts": 1749470003.02, "event": "run_end", "answer": "...", "steps": 1, "reason": "done"}
 ```
 
 ## Model Recommendations
@@ -177,8 +201,9 @@ sandbox = true           # use bubblewrap/firejail if available
 See [ROADMAP.md](ROADMAP.md) for full milestones.
 
 - **v0.1** — Plan/tool/observe loop, bash + file tools, llama.cpp backend
-- **v0.5** — Plugin system, memory tool, config file, Pi 5 support
-- **v1.0** — WASM plugins, multi-model routing, speculative decoding, packaging
+- **v0.2** — TOML config, python + memory tools, JSONL tracing, CI *(current)*
+- **v0.5** — Subprocess plugin system, sliding-window context, Pi 5 / RK3588 support
+- **v1.0** — WASM sandbox, multi-model routing, speculative decoding, NPU backends
 
 ## Contributing
 

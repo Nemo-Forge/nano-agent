@@ -8,9 +8,12 @@ model can react to, rather than crashing the run.
 from __future__ import annotations
 
 import subprocess
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+
+from nano_agent.memory import MemoryStore
 
 
 class ToolError(Exception):
@@ -63,6 +66,25 @@ def _read_file(args: dict) -> str:
     return text
 
 
+def _python(args: dict) -> str:
+    code = args.get("code")
+    if not code:
+        raise ToolError("python requires a 'code' argument")
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            timeout=args.get("timeout", 30),
+        )
+    except subprocess.TimeoutExpired:
+        raise ToolError("python snippet timed out") from None
+    out = ((proc.stdout or "") + (proc.stderr or "")).strip()
+    if proc.returncode != 0:
+        return f"[exit {proc.returncode}]\n{out}"
+    return out or "[no output]"
+
+
 def _write_file(args: dict) -> str:
     path = args.get("path")
     content = args.get("content")
@@ -98,7 +120,57 @@ BUILTIN_TOOLS: list[Tool] = [
         args_hint='{"path": "out.txt", "content": "hello"}',
         run=_write_file,
     ),
+    Tool(
+        name="python",
+        description="Run a short Python snippet and return its output.",
+        args_hint='{"code": "print(2 + 2)"}',
+        run=_python,
+    ),
 ]
+
+
+def make_memory_tool(memory_path: str) -> Tool:
+    """Build a stateful `memory` tool backed by a JSON store at memory_path."""
+    store = MemoryStore(Path(memory_path).expanduser())
+
+    def run(args: dict) -> str:
+        op = args.get("op")
+        if op == "set":
+            key, value = args.get("key"), args.get("value")
+            if not key or value is None:
+                raise ToolError("memory set requires 'key' and 'value'")
+            store.set(key, str(value))
+            return f"saved {key}"
+        if op == "get":
+            key = args.get("key")
+            if not key:
+                raise ToolError("memory get requires 'key'")
+            val = store.get(key)
+            return val if val is not None else f"[no value for {key}]"
+        if op == "list":
+            keys = store.keys()
+            return ", ".join(keys) if keys else "[memory empty]"
+        if op == "delete":
+            key = args.get("key")
+            if not key:
+                raise ToolError("memory delete requires 'key'")
+            return f"deleted {key}" if store.delete(key) else f"[no value for {key}]"
+        raise ToolError("memory requires 'op' to be one of: set, get, list, delete")
+
+    return Tool(
+        name="memory",
+        description="Persistent key-value memory across sessions.",
+        args_hint='{"op": "set", "key": "name", "value": "data"}',
+        run=run,
+    )
+
+
+def default_tools(memory_path: str | None = None) -> list[Tool]:
+    """Return the built-in tools, plus a memory tool if a path is given."""
+    tools = list(BUILTIN_TOOLS)
+    if memory_path:
+        tools.append(make_memory_tool(memory_path))
+    return tools
 
 
 class ToolRegistry:

@@ -19,13 +19,13 @@ Goal: working agent loop on Jetson Orin Nano, documented and reproducible.
 
 Goal: community-ready repo, first external contributors.
 
-- [ ] `pip install nano-agent` packaging
-- [ ] Config file (TOML) for model path, limits, tool allowlist
-- [ ] Interactive REPL mode
-- [ ] python_tool and memory_tool
-- [ ] Logging: structured JSON logs of all agent steps
+- [x] Config file (TOML) for model path, limits, tool allowlist
+- [x] Interactive REPL mode
+- [x] python_tool and memory_tool
+- [x] Logging: structured JSON (JSONL) trace of all agent steps
+- [x] GitHub Actions CI: lint, type check, unit tests
+- [ ] `pip install nano-agent` packaging (publish to PyPI — packaging ready, not yet released)
 - [ ] Raspberry Pi 5 support + documented benchmarks
-- [ ] GitHub Actions CI: lint, type check, unit tests
 - [ ] Launch post with demo video
 
 ## v0.5 — Plugin System

@@ -1,0 +1,24 @@
+# nano-agent configuration
+# Copy to ~/.nano-agent/config.toml, or pass with: nano-agent run --config <path>
+# CLI flags override anything set here.
+
+[model]
+path = "~/models/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+n_ctx = 4096
+n_gpu_layers = -1        # -1 = offload all layers to GPU, 0 = CPU only
+temperature = 0.1
+
+[agent]
+max_steps = 20
+max_tokens_per_step = 512
+offline_only = true      # reserved for network-capable tools (v0.5)
+
+[tools]
+# Omit this section (or the key) to allow all tools.
+allowed = ["bash", "read_file", "write_file", "python", "memory"]
+
+[memory]
+path = "~/.nano-agent/memory.json"
+
+[logging]
+file = "~/.nano-agent/trace.jsonl"   # JSONL trace of every run; omit to disable
