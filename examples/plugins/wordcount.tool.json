@@ -1,0 +1,7 @@
+{
+  "name": "wordcount",
+  "description": "Count the words and characters in a piece of text.",
+  "args_hint": "{\"text\": \"hello world\"}",
+  "command": ["python3", "wordcount.py"],
+  "timeout": 10
+}

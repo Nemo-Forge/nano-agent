@@ -32,14 +32,14 @@ Goal: community-ready repo, first external contributors.
 
 Goal: community can contribute tools without forking.
 
-- [ ] Subprocess plugin protocol (stdin/stdout JSON)
-- [ ] Tool discovery from `~/.nano-agent/tools/`
-- [ ] Tool schema validation and documentation generation
-- [ ] Sliding window context management (configurable window size)
-- [ ] Streaming output during agent execution
-- [ ] Orange Pi 5 and Rockchip RK3588 support
-- [ ] http_get tool with offline-mode blocking
-- [ ] Error recovery: retry failed tool calls with modified args
+- [x] Subprocess plugin protocol (stdin/stdout JSON)
+- [x] Tool discovery from `~/.nano-agent/tools/`
+- [x] Tool schema validation and listing (`nano-agent tools`)
+- [x] Sliding window context management (configurable window size)
+- [x] Streaming output during agent execution (`--stream`)
+- [x] http_get tool with offline-mode blocking
+- [x] Error recovery: consecutive-failure circuit breaker
+- [ ] Orange Pi 5 and Rockchip RK3588 support (needs hardware)
 
 ## v1.0 — Production
 

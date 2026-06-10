@@ -31,7 +31,7 @@ Every major agent framework — LangChain, AutoGen, CrewAI, smolagents — assum
 
 ## Quick Start
 
-> **Status: v0.1 (alpha).** Not yet on PyPI — install from source.
+> **Status: v0.5 (alpha).** Not yet on PyPI — install from source.
 
 ```bash
 # Install from source
@@ -99,25 +99,32 @@ while not done:
 
 ### Tool Plugin System
 
-Tools are executables or WASM modules in `~/.nano-agent/tools/`. They communicate via stdin/stdout JSON:
+Extend nano-agent with new tools — in any language — without recompiling. Drop a
+`<name>.tool.json` manifest in `~/.nano-agent/tools/` (or pass `--plugin-dir`).
+nano-agent runs the plugin's command, writes a JSON request to stdin, and reads a
+JSON response from stdout:
 
 ```json
-// input
-{"tool": "bash", "args": {"cmd": "ls -la /tmp"}}
+// request  (stdin)
+{"args": {"text": "hello world"}}
 
-// output  
-{"ok": true, "result": "total 8\ndrwxrwxrwt ...", "tokens_used": 0}
+// response (stdout)
+{"ok": true, "result": "2 words, 11 characters"}
 ```
 
-Write a tool in any language:
+A minimal plugin:
 
 ```python
 #!/usr/bin/env python3
 import json, sys
 req = json.load(sys.stdin)
-result = run_my_tool(req["args"])
+result = do_work(req["args"])
 print(json.dumps({"ok": True, "result": result}))
 ```
+
+List everything discovered (built-ins + plugins) with `nano-agent tools`. Full
+guide: [docs/PLUGINS.md](docs/PLUGINS.md); a ready example:
+[examples/plugins/](examples/plugins/).
 
 ## Built-in Tools
 
@@ -128,10 +135,11 @@ print(json.dumps({"ok": True, "result": result}))
 | `write_file` | Write/append files | available |
 | `python` | Execute Python snippets in a subprocess | available |
 | `memory` | Persistent key-value store across sessions | available |
-| `http_get` | HTTP requests (offline-mode aware) | planned (v0.5) |
+| `http_get` | Fetch an HTTP(S) URL; blocked when `offline_only` is set | available |
 
-Restrict which tools the agent may use with `--tools` or the `[tools] allowed`
-config key, e.g. `--tools bash,read_file`.
+Plus any [plugins](#tool-plugin-system) you add. Restrict which tools the agent
+may use with `--tools` or the `[tools] allowed` config key, e.g.
+`--tools bash,read_file`.
 
 ## Configuration
 
@@ -222,8 +230,8 @@ top of the model. nano-agent's only required dependency is `llama-cpp-python`.
 See [ROADMAP.md](ROADMAP.md) for full milestones.
 
 - **v0.1** — Plan/tool/observe loop, bash + file tools, llama.cpp backend
-- **v0.2** — TOML config, python + memory tools, JSONL tracing, CI *(current)*
-- **v0.5** — Subprocess plugin system, sliding-window context, Pi 5 / RK3588 support
+- **v0.2** — TOML config, python + memory tools, JSONL tracing, CI
+- **v0.5** — Subprocess plugin system, sliding-window context, http_get, streaming *(current)*
 - **v1.0** — WASM sandbox, multi-model routing, speculative decoding, NPU backends
 
 ## Contributing

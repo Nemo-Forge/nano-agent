@@ -22,9 +22,13 @@ class Config:
     n_ctx: int = 4096
     n_gpu_layers: int = -1
     temperature: float = 0.1
+    stream: bool = False
     max_steps: int = 20
     max_tokens_per_step: int = 512
+    context_window: int = 0  # 0 = keep full history
+    max_consecutive_errors: int = 5
     tools: list[str] | None = None  # None means "all available tools"
+    plugin_dir: str = "~/.nano-agent/tools"
     offline_only: bool = True
     memory_path: str = "~/.nano-agent/memory.json"
     log_file: str | None = None
@@ -63,10 +67,14 @@ def load_config(path: str | Path | None = None) -> Config:
         n_ctx=model.get("n_ctx", Config.n_ctx),
         n_gpu_layers=model.get("n_gpu_layers", Config.n_gpu_layers),
         temperature=model.get("temperature", Config.temperature),
+        stream=model.get("stream", Config.stream),
         max_steps=agent.get("max_steps", Config.max_steps),
         max_tokens_per_step=agent.get("max_tokens_per_step", Config.max_tokens_per_step),
+        context_window=agent.get("context_window", Config.context_window),
+        max_consecutive_errors=agent.get("max_consecutive_errors", Config.max_consecutive_errors),
         offline_only=agent.get("offline_only", Config.offline_only),
         tools=tools.get("allowed"),
+        plugin_dir=tools.get("plugin_dir", Config.plugin_dir),
         memory_path=memory.get("path", Config.memory_path),
         log_file=logging.get("file"),
     )

@@ -7,15 +7,19 @@ path = "~/models/qwen2.5-1.5b-instruct-q4_k_m.gguf"
 n_ctx = 4096
 n_gpu_layers = -1        # -1 = offload all layers to GPU, 0 = CPU only
 temperature = 0.1
+stream = false           # echo tokens to stderr as they generate
 
 [agent]
 max_steps = 20
 max_tokens_per_step = 512
-offline_only = true      # reserved for network-capable tools (v0.5)
+context_window = 0       # 0 = keep full history; N = keep only last N steps in prompt
+max_consecutive_errors = 5
+offline_only = true      # blocks the http_get tool when true
 
 [tools]
 # Omit this section (or the key) to allow all tools.
-allowed = ["bash", "read_file", "write_file", "python", "memory"]
+allowed = ["bash", "read_file", "write_file", "python", "memory", "http_get"]
+plugin_dir = "~/.nano-agent/tools"   # *.tool.json plugin manifests
 
 [memory]
 path = "~/.nano-agent/memory.json"

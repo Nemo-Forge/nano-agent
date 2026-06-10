@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -129,6 +131,37 @@ BUILTIN_TOOLS: list[Tool] = [
 ]
 
 
+def make_http_get_tool(offline_only: bool) -> Tool:
+    """Build an http_get tool. When offline_only is set, the tool refuses to run.
+
+    The tool stays visible to the model even when blocked, so the model gets a
+    clear 'offline mode' error rather than silently missing a capability.
+    """
+
+    def run(args: dict) -> str:
+        if offline_only:
+            raise ToolError("http_get is blocked: nano-agent is running in offline mode")
+        url = args.get("url")
+        if not url:
+            raise ToolError("http_get requires a 'url' argument")
+        if not str(url).startswith(("http://", "https://")):
+            raise ToolError("http_get only supports http:// and https:// URLs")
+        req = urllib.request.Request(url, headers={"User-Agent": "nano-agent"})
+        try:
+            with urllib.request.urlopen(req, timeout=args.get("timeout", 20)) as resp:
+                body = resp.read(args.get("max_bytes", 16384)).decode("utf-8", errors="replace")
+        except (urllib.error.URLError, OSError, ValueError) as e:
+            raise ToolError(f"http_get failed: {e}") from e
+        return body
+
+    return Tool(
+        name="http_get",
+        description="Fetch the body of an HTTP(S) URL (disabled in offline mode).",
+        args_hint='{"url": "https://example.com"}',
+        run=run,
+    )
+
+
 def make_memory_tool(memory_path: str) -> Tool:
     """Build a stateful `memory` tool backed by a JSON store at memory_path."""
     store = MemoryStore(Path(memory_path).expanduser())
@@ -165,9 +198,10 @@ def make_memory_tool(memory_path: str) -> Tool:
     )
 
 
-def default_tools(memory_path: str | None = None) -> list[Tool]:
-    """Return the built-in tools, plus a memory tool if a path is given."""
+def default_tools(memory_path: str | None = None, offline_only: bool = True) -> list[Tool]:
+    """Return the built-in tools, plus http_get and (if a path is given) memory."""
     tools = list(BUILTIN_TOOLS)
+    tools.append(make_http_get_tool(offline_only))
     if memory_path:
         tools.append(make_memory_tool(memory_path))
     return tools

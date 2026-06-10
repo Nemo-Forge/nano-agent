@@ -33,10 +33,19 @@ Rules:
 """
 
 
-def build_prompt(task: str, tools_desc: str, history: list[Observation]) -> str:
+def build_prompt(
+    task: str, tools_desc: str, history: list[Observation], window: int = 0
+) -> str:
+    """Render the prompt. If window > 0, only the last `window` observations are
+    included (older ones are summarized as omitted) to bound context growth on
+    long runs — important on edge devices with a 4-8K token window."""
     system = SYSTEM_TEMPLATE.format(tools=tools_desc)
     parts = [system, f"\nTASK: {task}\n"]
-    for obs in history:
+    shown = history if window <= 0 else history[-window:]
+    omitted = len(history) - len(shown)
+    if omitted > 0:
+        parts.append(f"[{omitted} earlier step(s) omitted to save context]\n")
+    for obs in shown:
         step = obs.step
         if step.action == Action.TOOL:
             parts.append(

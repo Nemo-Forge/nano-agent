@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nano-agent"
-version = "0.1.0"
+version = "0.5.0"
 description = "Offline-first autonomous LLM agent runtime for edge devices (Jetson, Raspberry Pi)"
 readme = "README.md"
 requires-python = ">=3.10"

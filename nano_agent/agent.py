@@ -20,6 +20,8 @@ class Agent:
         registry: ToolRegistry | None = None,
         max_steps: int = 20,
         max_tokens_per_step: int = 512,
+        context_window: int = 0,
+        max_consecutive_errors: int = 5,
         on_step: Callable[[Step], None] | None = None,
         on_observation: Callable[[Observation], None] | None = None,
     ) -> None:
@@ -27,15 +29,18 @@ class Agent:
         self.registry = registry or ToolRegistry(BUILTIN_TOOLS)
         self.max_steps = max_steps
         self.max_tokens_per_step = max_tokens_per_step
+        self.context_window = context_window
+        self.max_consecutive_errors = max_consecutive_errors
         self.on_step = on_step
         self.on_observation = on_observation
 
     def run(self, task: str) -> AgentResult:
         history: list[Observation] = []
         tools_desc = self.registry.describe()
+        consecutive_errors = 0
 
         for _ in range(self.max_steps):
-            prompt = build_prompt(task, tools_desc, history)
+            prompt = build_prompt(task, tools_desc, history, self.context_window)
             raw = self.backend.generate(prompt, self.max_tokens_per_step, _STOP)
 
             try:
@@ -53,6 +58,9 @@ class Agent:
                 history.append(obs)
                 if self.on_observation:
                     self.on_observation(obs)
+                consecutive_errors += 1
+                if consecutive_errors >= self.max_consecutive_errors:
+                    return self._give_up(history)
                 continue
 
             if self.on_step:
@@ -71,11 +79,26 @@ class Agent:
             if self.on_observation:
                 self.on_observation(obs)
 
+            if obs.ok:
+                consecutive_errors = 0
+            else:
+                consecutive_errors += 1
+                if consecutive_errors >= self.max_consecutive_errors:
+                    return self._give_up(history)
+
         return AgentResult(
             answer="(stopped: reached max steps without finishing)",
             steps_taken=len(history),
             history=history,
             stopped_reason="max_steps",
+        )
+
+    def _give_up(self, history: list[Observation]) -> AgentResult:
+        return AgentResult(
+            answer=f"(stopped: {self.max_consecutive_errors} consecutive errors without progress)",
+            steps_taken=len(history),
+            history=history,
+            stopped_reason="too_many_errors",
         )
 
     def _exec(self, step: Step) -> Observation:

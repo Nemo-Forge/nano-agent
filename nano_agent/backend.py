@@ -7,6 +7,7 @@ backends (gguf-npu, remote endpoints) can be dropped in later.
 
 from __future__ import annotations
 
+import sys
 from typing import Protocol
 
 
@@ -31,6 +32,7 @@ class LlamaCppBackend:
         n_gpu_layers: int = -1,
         temperature: float = 0.1,
         seed: int = 0,
+        stream: bool = False,
         verbose: bool = False,
     ) -> None:
         # Imported lazily so the package imports without the heavy native dep
@@ -38,6 +40,7 @@ class LlamaCppBackend:
         from llama_cpp import Llama
 
         self.temperature = temperature
+        self.stream = stream
         self._llm = Llama(
             model_path=model_path,
             n_ctx=n_ctx,
@@ -47,6 +50,8 @@ class LlamaCppBackend:
         )
 
     def generate(self, prompt: str, max_tokens: int, stop: list[str]) -> str:
+        if self.stream:
+            return self._generate_streaming(prompt, max_tokens, stop)
         out = self._llm(
             prompt,
             max_tokens=max_tokens,
@@ -54,3 +59,20 @@ class LlamaCppBackend:
             stop=stop,
         )
         return out["choices"][0]["text"]
+
+    def _generate_streaming(self, prompt: str, max_tokens: int, stop: list[str]) -> str:
+        # Tokens are echoed to stderr as they arrive; the full text is still
+        # returned so the agent loop is unchanged.
+        text = ""
+        for chunk in self._llm(
+            prompt,
+            max_tokens=max_tokens,
+            temperature=self.temperature,
+            stop=stop,
+            stream=True,
+        ):
+            piece = chunk["choices"][0]["text"]
+            text += piece
+            print(piece, end="", file=sys.stderr, flush=True)
+        print(file=sys.stderr)
+        return text
